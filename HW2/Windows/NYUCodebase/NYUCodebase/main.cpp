@@ -49,7 +49,6 @@ GLuint loadTexture(const char* imagePath)
 
 	return textureID;
 }
-GLuint winnerTexture = loadTexture(RESOURCE_FOLDER"bush.png");
 
 void setup(){
 	//SDL
@@ -71,6 +70,7 @@ void setup(){
 
 
 	glUseProgram(program->programID);
+	Winner->textureID = loadTexture(RESOURCE_FOLDER"flat_medal1.png");
 
 
 }
@@ -194,7 +194,6 @@ void render(){
 			Winner->x = -1.0f;
 			modelMatrix.identity();
 			modelMatrix.Translate(Winner->x, Winner->y, 0.0f);
-			glBindTexture(GL_TEXTURE_2D, winnerTexture);
 			program->setModelMatrix(modelMatrix);
 			Winner->Draw(program);
 
@@ -203,7 +202,6 @@ void render(){
 		else if (win2){
 			Winner->x = 1.0f;
 			Ball->x = -2.0f;
-			glBindTexture(GL_TEXTURE_2D, winnerTexture);
 			modelMatrix.identity();
 			modelMatrix.Translate(Winner->x, Winner->y, 0.0f);
 			program->setModelMatrix(modelMatrix);
