@@ -29,19 +29,12 @@ using namespace std;
 #define FIXED_TIMESTEP 1.0f/60.0f
 #define MAX_TIMESTEPS 6
 
-
-struct Solid
-{
-	float x;
-	float y;
-};
 SDL_Window* displayWindow;
 bool done = false;
 SDL_Event event;
 Matrix projectionMatrix, modelMatrix, viewMatrix;
 const Uint8 *keys = SDL_GetKeyboardState(NULL);
 float lastFrameTicks = 0.0f;
-Entity* aliens[55];
 Entity Player;
 Entity* tiles[10];
 GLuint fontSheet = 0;
@@ -52,7 +45,6 @@ bool gameOver = false;
 int mapWidth;
 int mapHeight;
 unsigned char** levelData;
-std::vector<Solid> brickTiles;
 float TILE_SIZE = 0.5f;
 int * currGridX = new int;
 int * currGridY = new int;
@@ -406,10 +398,7 @@ void render(){
 
 void cleanUp(){
 	SDL_Quit();
-	for (int i = 0; i < 55; i++)
-	{
-		delete aliens[i];
-	}
+
 }
 
 
