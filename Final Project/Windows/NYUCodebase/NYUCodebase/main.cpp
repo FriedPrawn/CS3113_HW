@@ -55,10 +55,17 @@ int * currGridY = new int;
 GLuint tileset;
 GLuint tileset2;
 GLuint backgroudTexture;
-float placeXD =0.0f;
+float placeXD = 0.0f;
 Mix_Music *music;
 Mix_Chunk *jump;
 
+
+//animation
+const int runAnimation[] = { 0, 1, 2, 7, 8, 9, 3, 4, 11, 5 };
+const int numFrames = 10;
+float animationElapsed = 0.0f;
+float framesPerSecond = 60.0f;
+int currentIndex = 0;
 vector<int> staticTilesIndex;
 
 GLuint loadTexture(const char* imagePath)
@@ -324,6 +331,7 @@ void setup(){
 
 	GLuint oreoTexture = loadTexture(RESOURCE_FOLDER"cookieBrown.png");
 	GLuint spriteSheetTexture = loadTexture(RESOURCE_FOLDER"aliens.png");
+	GLuint greenAlienSpriteSheet = loadTexture(RESOURCE_FOLDER"p1_spritesheet.png");
 	GLuint enemyWorm = loadTexture(RESOURCE_FOLDER"slimeWalk1.png");
 	backgroudTexture = loadTexture(RESOURCE_FOLDER"bg_grasslands.png");
 	fontSheet = loadTexture(RESOURCE_FOLDER"font1.png");
@@ -341,8 +349,10 @@ void setup(){
 	{
 		tiles[i] = new Entity(SheetSprite(oreoTexture, 0.0f, 0.0f, 1.0f, 1.0F, 0.6f), true, -2.7f + 1.5f*i, -0.8f);
 	}	
-	Player =  Entity(SheetSprite(spriteSheetTexture, 676.0f / 1024.0f, 184.0f / 512.0f, 66.0f / 1024.0f, 92.0f /
-		512.0f, 0.6f),false, 0.0f, -0.380f - 12.0f);
+	//Player =  Entity(SheetSprite(spriteSheetTexture, 676.0f / 1024.0f, 184.0f / 512.0f, 66.0f / 1024.0f, 92.0f /
+	//	512.0f, 0.6f),false, 0.0f, -0.380f - 12.0f);
+	Player = Entity(SheetSprite(greenAlienSpriteSheet, 67.0f / 508.0f, 196.0f / 288.0f, 66.0f / 508.0f, 92.0f /
+		288.0f, 0.7f), false, 0.0f, -0.380f - 12.0f);
 	Player.entityType = ENTITY_PLAYER;
 	Enemy.sprite = SheetSprite(enemyWorm);
 	Enemy.entityType = ENTITY_ENEMY;
@@ -433,6 +443,9 @@ void update(float elapsed){
 			if (!Player.isAlive)
 				resetLevelDefaults();
 		}
+		if (keys[SDL_SCANCODE_F1]){
+			done = true;
+		}
 	}
 	else if (currentState == STATE_GAME_OVER)
 	{
@@ -457,6 +470,18 @@ void update(float elapsed){
 		else{
 			Player.acceleration_x = 0.0f;
 		}
+
+		
+
+		animationElapsed += elapsed;
+		if (animationElapsed > 1.0 / framesPerSecond) {
+			currentIndex++;
+			animationElapsed = 0.0;
+			if (currentIndex > numFrames - 1) {
+				currentIndex = 0;
+			}
+		}
+
 
 		penetrationUpdate(&Player);
 		penetrationUpdate(&Enemy);
@@ -508,6 +533,11 @@ void render(){
 		program->setModelMatrix(modelMatrix);
 		DrawText(program, fontSheet, "Press enter to start", 0.2f, 0.0f);
 		modelMatrix.identity();
+		modelMatrix.Translate(-1.5f, 0.5f, 0.0f);
+		program->setModelMatrix(modelMatrix);
+		DrawText(program, fontSheet, "Press F1 to quit game", 0.2f, 0.0f);
+		
+		modelMatrix.identity();
 		modelMatrix.Translate(-0.50f, -0.5f, 0.0f);
 		program->setModelMatrix(modelMatrix);
 		DrawText(program, fontSheet, "Space =  jump ", 0.17f, -0.07f);
@@ -536,7 +566,18 @@ void render(){
 		
 
 		renderLevel();
-		Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
+		if (Player.acceleration_x == 0.0f){
+			/*Player.sprite.u = 67.0f / 508.0f;
+			Player.sprite.v = 196.0f / 288.0f;
+			Player.sprite.width = 66.0f / 508.0f;
+			Player.sprite.height = 92.0f / 288.0f;*/
+			
+			Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
+		}
+		else{
+			Player.sprite.DrawUniformSheet(program, modelMatrix, Player.x, Player.y, runAnimation[currentIndex], 7, 3);
+		}
+		//Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
 		Enemy.sprite.Draw(program, modelMatrix, Enemy.x, Enemy.y);
 		std::cout << placeXD << Player.isAlive;
 		//background.Draw(program, modelMatrix, 0.0f, 0.0f);
@@ -569,6 +610,10 @@ void render(){
 }
 
 void cleanUp(){
+	Mix_FreeChunk(jump);
+	Mix_FreeMusic(music);
+	Mix_CloseAudio();
+	Mix_Quit();
 	SDL_Quit();
 
 }

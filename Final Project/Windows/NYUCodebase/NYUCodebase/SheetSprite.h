@@ -15,7 +15,7 @@ public:
 	SheetSprite(unsigned int textureID, float u, float v, float width, float height, float
 		size);
 	void Draw(ShaderProgram* program, Matrix &modelMatrix, float x, float y);
-	
+	void DrawUniformSheet(ShaderProgram *program, Matrix &modelMatrix, float x, float y, int index, int spriteCountX, int spriteCountY);
 	unsigned int textureID;
 	float size;
 	float u;
