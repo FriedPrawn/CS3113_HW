@@ -9,7 +9,8 @@ Entity::Entity(SheetSprite sprite, bool isStatic, float x, float y, float veloci
 	acceleration_y(acceleration_y),
 	x(x),
 	y(y),
-	isAlive(true)
+	isAlive(true),
+	actionState(ACTION_IDLE)
 	{}
 
 float Entity::getWidth()
@@ -67,30 +68,55 @@ void Entity::performCollision(Entity *entity)
 
 
 	bool collides = !(bot > targetTop || top < targetBot || left > targetRight || right < targetLeft);
-	if (collides){
-		if ((entityType == ENTITY_ENEMY && entity->entityType == ENTITY_PLAYER))
-		{
-			entity->isAlive = false;
-		}
-		else if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY))
-		{
-			isAlive = false;
-		}
+	//if (collides && entity->isAlive && isAlive){
+	//	/*if ((entityType == ENTITY_ENEMY && entity->entityType == ENTITY_PLAYER))
+	//	{
+	//		entity->isAlive = false;
+	//	}
+	//	else if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY))
+	//	{
+	//		isAlive = false;
+	//	}*/
+
+	//	if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY) && bot >= (entity->y + entity->getHeight() * 0.45f) )
+	//	{
+	//		entity->isAlive = false;
+	//	}
+	//	else if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY) && bot < entity->y - entity->getHeight() *0.49f && entity->isAlive)
+	//	{
+	//		isAlive = false;
+	//	}
+
+	//}
+	bool stomps = (bot < targetTop );
+	if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY) && stomps && collides && actionState == ACTION_JUMPING)
+	{
+		entity->isAlive = false;
+	}
+	else if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY)  && collides)
+	{
+		isAlive = false;
 	}
 }
 void Entity::update(float elapsed, float friction_x, float gravity_y)
 {
-	if (!isStatic)
+	if (!isStatic && isAlive)
 	{
 		velocity_x = lerp(velocity_x, 0.0f, elapsed * friction_x);
 		velocity_y += gravity_y * elapsed;
 
 		velocity_x += acceleration_x * elapsed;
 		velocity_y += acceleration_y * elapsed;
-		if (collidedBottom) velocity_y = 0.0f;
+		if (collidedBottom) { velocity_y = 0.0f; actionState = ACTION_IDLE; }
 		if (collidedRight || collidedLeft) velocity_x = 0.0f;
 		x += velocity_x * elapsed;
 		y += velocity_y * elapsed;
 	}
-
+	else if (!isStatic && !isAlive)
+	{
+		x = 0.1f;
+		y = 0.1f;
+		velocity_x = 0.0f;
+		velocity_y = 0.0f;
+	}
 }

@@ -369,6 +369,7 @@ void processEvents(){
 			if (event.key.keysym.scancode == SDL_SCANCODE_SPACE && Player.collidedBottom){
 				Mix_PlayChannel(-1, jump, 0);
 				Player.velocity_y = 3.0f;
+				Player.actionState = ACTION_JUMPING;
 			}
 		}
 	}
@@ -382,6 +383,8 @@ void resetLevelDefaults()
 	Player.acceleration_y = 0.0f;
 	Player.velocity_x = 0.0f;
 	Player.velocity_y = 0.0f;
+	Enemy.isAlive = true;
+	loadLevel();
 }
 void penetrationUpdate(Entity* entity)
 {
@@ -443,8 +446,12 @@ void update(float elapsed){
 			if (!Player.isAlive)
 				resetLevelDefaults();
 		}
-		if (keys[SDL_SCANCODE_F1]){
+		if (keys[SDL_SCANCODE_Q]){
 			done = true;
+		}
+		if (keys[SDL_SCANCODE_R]){
+			currentState = STATE_GAME;
+			resetLevelDefaults();
 		}
 	}
 	else if (currentState == STATE_GAME_OVER)
@@ -485,7 +492,8 @@ void update(float elapsed){
 
 		penetrationUpdate(&Player);
 		penetrationUpdate(&Enemy);
-		Enemy.performCollision(&Player);
+		Player.performCollision(&Enemy);
+		//Enemy.performCollision(&Player);
 		Enemy.update(elapsed, FRICTION, GRAVITY);
 		Player.update(elapsed, FRICTION, GRAVITY);
 		if (!Player.isAlive && currentState == STATE_GAME){
@@ -535,7 +543,7 @@ void render(){
 		modelMatrix.identity();
 		modelMatrix.Translate(-1.5f, 0.5f, 0.0f);
 		program->setModelMatrix(modelMatrix);
-		DrawText(program, fontSheet, "Press F1 to quit game", 0.2f, 0.0f);
+		DrawText(program, fontSheet, "Press Q to quit game", 0.2f, 0.0f);
 		
 		modelMatrix.identity();
 		modelMatrix.Translate(-0.50f, -0.5f, 0.0f);
@@ -572,14 +580,30 @@ void render(){
 			Player.sprite.width = 66.0f / 508.0f;
 			Player.sprite.height = 92.0f / 288.0f;*/
 			
-			Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
+			
+			/*if ((Player.acceleration_y) && !Player.collidedBottom)
+			{
+				Player.sprite.u = 438.0f / 508.0f;
+				Player.sprite.v = 93.0f / 288.0f;
+				Player.sprite.width = 67.0f / 508.0f;
+				Player.sprite.height = 94.0f / 288.0f;
+				Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
+			}
+			else {*/
+				Player.sprite.u = 67.0f / 508.0f;
+				Player.sprite.v = 196.0f / 288.0f;
+				Player.sprite.width = 66.0f / 508.0f;
+				Player.sprite.height = 92.0f / 288.0f;
+				Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
+			//}
 		}
 		else{
 			Player.sprite.DrawUniformSheet(program, modelMatrix, Player.x, Player.y, runAnimation[currentIndex], 7, 3);
 		}
 		//Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
-		Enemy.sprite.Draw(program, modelMatrix, Enemy.x, Enemy.y);
-		std::cout << placeXD << Player.isAlive;
+		if (Enemy.isAlive)
+			Enemy.sprite.Draw(program, modelMatrix, Enemy.x, Enemy.y);
+		std::cout << placeXD << Player.isAlive << Enemy.isAlive;
 		//background.Draw(program, modelMatrix, 0.0f, 0.0f);
 		std::cout << Player.x << endl;
 		viewMatrix.identity();

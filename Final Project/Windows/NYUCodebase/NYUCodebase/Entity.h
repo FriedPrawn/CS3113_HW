@@ -13,6 +13,10 @@ enum EntityType
 {
 	ENTITY_PLAYER, ENTITY_ENEMY, ENTITY_COIN
 };
+enum Action
+{
+	ACTION_JUMPING, ACTION_MOVING, ACTION_IDLE
+};
 class Entity
 {
 public: 
@@ -38,6 +42,7 @@ public:
 	bool isStatic;
 	bool isAlive;
 	EntityType entityType;
+	Action actionState;
 
 	bool collidedTop = false;
 	bool collidedBottom = false;
