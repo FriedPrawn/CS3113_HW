@@ -10,7 +10,8 @@ Entity::Entity(SheetSprite sprite, bool isStatic, float x, float y, float veloci
 	x(x),
 	y(y),
 	isAlive(true),
-	actionState(ACTION_IDLE)
+	actionState(ACTION_IDLE),
+	timeChasing(0.0f)
 	{}
 
 float Entity::getWidth()

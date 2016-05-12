@@ -38,7 +38,7 @@ Matrix projectionMatrix, modelMatrix, viewMatrix;
 const Uint8 *keys = SDL_GetKeyboardState(NULL);
 float lastFrameTicks = 0.0f;
 Entity Player;
-Entity Enemy;
+Entity Enemy, Enemy2;
 Entity* tiles[10];
 SheetSprite background;
 GLuint fontSheet = 0;
@@ -48,6 +48,8 @@ GameState currentState = STATE_TITLE_SCREEN;
 bool gameOver = false;
 int mapWidth;
 int mapHeight;
+int tileWidth;
+int tileHeight;
 unsigned char** levelData;
 float TILE_SIZE = 0.4f;
 int * currGridX = new int;
@@ -136,6 +138,12 @@ bool readHeader(std::ifstream &stream) {
 		else if (key == "height"){
 			mapHeight = atoi(value.c_str());
 		}
+		else if (key == "tilewidth"){
+			tileWidth = atoi(value.c_str());
+		}
+		else if (key == "tileheight"){
+			tileHeight = atoi(value.c_str());
+		}
 	}
 	if (mapWidth == -1 || mapHeight == -1) {
 		return false;
@@ -198,13 +206,25 @@ bool readEntityData(std::ifstream &stream) {
 			string xPosition, yPosition;
 			getline(lineStream, xPosition, ',');
 			getline(lineStream, yPosition, ',');
-			float placeX = float (atoi(xPosition.c_str()) / 1.0f) * TILE_SIZE;
-			float placeY = float (atoi(yPosition.c_str()) / 1.0f) * -TILE_SIZE;
+			float placeX = float (atoi(xPosition.c_str()) / tileWidth) * TILE_SIZE;
+			float placeY = float (atoi(yPosition.c_str()) / tileHeight) * -TILE_SIZE;
 			
 			if (type == "Ground")
 			{
 				Enemy.x = placeX - 0;
-				Enemy.y = placeY + 2.0f;
+				Enemy.y = placeY;
+				placeXD = placeX;
+			}
+			if (type == "Worm")
+			{
+				Enemy.x = placeX;
+				Enemy.y = placeY;
+				placeXD = placeX;
+			}
+			if (type == "Worm2")
+			{
+				Enemy2.x = placeX;
+				Enemy2.y = placeY;
 				placeXD = placeX;
 			}
 		}
@@ -214,7 +234,9 @@ bool readEntityData(std::ifstream &stream) {
 void loadLevel()
 {
 	tileset = loadTexture(RESOURCE_FOLDER"tiles_spritesheet1.png");
-	ifstream infile("alienlevel1.txt");
+	//ifstream infile("alienlevel1.txt");
+	ifstream infile("AlienLevel1Stuff.txt");
+
 	string line;
 	while (getline(infile, line)){
 		if (line == "[header]")
@@ -356,6 +378,12 @@ void setup(){
 	Player.entityType = ENTITY_PLAYER;
 	Enemy.sprite = SheetSprite(enemyWorm);
 	Enemy.entityType = ENTITY_ENEMY;
+	Enemy.acceleration_x = 1.0f;
+	Enemy2.sprite = SheetSprite(enemyWorm);
+	Enemy2.entityType = ENTITY_ENEMY;
+	Enemy2.enemyState = ENEMY_NORMAL;
+
+
 	background = SheetSprite(backgroudTexture, 0.0f, 0.0f, 1024.0f, 512.0f, 7.0f);
 	loadLevel();
 	
@@ -400,7 +428,7 @@ void penetrationUpdate(Entity* entity)
 	float penetration = 0.0f;
 	worldToTileCoordinates(entity->x - entity->getWidth() / 2, entity->y - entity->getHeight() / 2, &currX1, &currY1);
 	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y - entity->getHeight() / 2, &currX2, &currY2);
-	if (levelData[currY1][currX1] == 95 || levelData[currY2][currX2] == 95)
+	if (levelData[currY1][currX1] == 95 || levelData[currY2][currX2] == 95 || levelData[currY1][currX1] == 9 || levelData[currY2][currX2] == 9)
 	{
 		penetration = fabs((-TILE_SIZE*(currY1)) - bot);
 		entity->y += penetration + 0.000009f;
@@ -409,7 +437,7 @@ void penetrationUpdate(Entity* entity)
 	//Penetrate Top
 	worldToTileCoordinates(entity->x - entity->getWidth() / 2, entity->y + entity->getHeight() / 2, &currX1, &currY1);
 	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y + entity->getHeight() / 2, &currX2, &currY2);
-	if (levelData[currY1][currX1] == 95 || levelData[currY2][currX2] == 95)
+	if (levelData[currY1][currX1] == 95 || levelData[currY2][currX2] == 95 || levelData[currY1][currX1] == 9 || levelData[currY2][currX2] == 9)
 	{
 		penetration = fabs((-TILE_SIZE*(currY1)-TILE_SIZE) - top);
 		entity->y -= penetration + 0.000009f;
@@ -436,6 +464,36 @@ void penetrationUpdate(Entity* entity)
 		entity->x -= penetration + 0.00039f;
 		entity->collidedRight = true;
 		entity->velocity_x = 0.0f;
+	}
+}
+void edgeTurns(Entity* entity)
+{
+	
+	//Create detector point
+	// Slightly lower and to the right/left
+	/*entity->collidedBottom = false;
+	entity->collidedTop = false;
+	entity->collidedLeft = false;
+	entity->collidedRight = false;*/
+	int currX1, currY1, currX2, currY2;
+	float bot = entity->y - entity->getHeight() * 0.75f;
+	float top = entity->y + entity->getHeight() * 0.5f;
+	float left = entity->x - entity->getWidth() * 0.7f;
+	float right = entity->x + entity->getWidth() * 0.65f;
+	float penetration = 0.0f;
+	worldToTileCoordinates(left, bot, &currX1, &currY1);
+	worldToTileCoordinates(right, bot, &currX2, &currY2);
+	if (entity->acceleration_x > 0.0f){
+		if (levelData[currY2][currX2] != 9 && entity->collidedBottom)
+		{
+				entity->acceleration_x *= -1.0f;
+		}
+	}
+	else {
+		if (levelData[currY1][currX1] != 9 && entity->collidedBottom)
+		{
+			entity->acceleration_x *= -1.0f;
+		}
 	}
 }
 void update(float elapsed){
@@ -492,9 +550,14 @@ void update(float elapsed){
 
 		penetrationUpdate(&Player);
 		penetrationUpdate(&Enemy);
+		penetrationUpdate(&Enemy2);
 		Player.performCollision(&Enemy);
+		Player.performCollision(&Enemy2);
 		//Enemy.performCollision(&Player);
+		
+		edgeTurns(&Enemy);
 		Enemy.update(elapsed, FRICTION, GRAVITY);
+		Enemy2.update(elapsed, FRICTION, GRAVITY);
 		Player.update(elapsed, FRICTION, GRAVITY);
 		if (!Player.isAlive && currentState == STATE_GAME){
 			currentState = STATE_GAME_OVER;
@@ -603,6 +666,7 @@ void render(){
 		//Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
 		if (Enemy.isAlive)
 			Enemy.sprite.Draw(program, modelMatrix, Enemy.x, Enemy.y);
+		Enemy2.sprite.Draw(program, modelMatrix, Enemy2.x, Enemy2.y);
 		std::cout << placeXD << Player.isAlive << Enemy.isAlive;
 		//background.Draw(program, modelMatrix, 0.0f, 0.0f);
 		std::cout << Player.x << endl;

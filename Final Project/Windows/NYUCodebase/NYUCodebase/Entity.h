@@ -17,6 +17,14 @@ enum Action
 {
 	ACTION_JUMPING, ACTION_MOVING, ACTION_IDLE
 };
+enum EnemyState
+{
+	ENEMY_ANGRY, ENEMY_NORMAL, ENEMY_RETURNING
+};
+enum EnemyType
+{
+	ENEMY_WORM
+};
 class Entity
 {
 public: 
@@ -38,11 +46,13 @@ public:
 	float velocity_y;
 	float acceleration_x;
 	float acceleration_y;
+	float timeChasing;
 
 	bool isStatic;
 	bool isAlive;
 	EntityType entityType;
 	Action actionState;
+	EnemyState enemyState;
 
 	bool collidedTop = false;
 	bool collidedBottom = false;
