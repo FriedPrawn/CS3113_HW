@@ -68,7 +68,7 @@ const int numFrames = 10;
 float animationElapsed = 0.0f;
 float framesPerSecond = 60.0f;
 int currentIndex = 0;
-vector<int> staticTilesIndex;
+vector<int> staticTilesIndex{9,140,66,89,50,66};
 
 GLuint loadTexture(const char* imagePath)
 {
@@ -235,7 +235,7 @@ void loadLevel()
 {
 	tileset = loadTexture(RESOURCE_FOLDER"tiles_spritesheet1.png");
 	//ifstream infile("alienlevel1.txt");
-	ifstream infile("AlienLevel1Stuff.txt");
+	ifstream infile("Level1.txt");
 
 	string line;
 	while (getline(infile, line)){
@@ -374,11 +374,12 @@ void setup(){
 	//Player =  Entity(SheetSprite(spriteSheetTexture, 676.0f / 1024.0f, 184.0f / 512.0f, 66.0f / 1024.0f, 92.0f /
 	//	512.0f, 0.6f),false, 0.0f, -0.380f - 12.0f);
 	Player = Entity(SheetSprite(greenAlienSpriteSheet, 67.0f / 508.0f, 196.0f / 288.0f, 66.0f / 508.0f, 92.0f /
-		288.0f, 0.7f), false, 0.0f, -0.380f - 12.0f);
+		288.0f, 0.7f), false, 0.5f, -0.380f - 10.0f);
 	Player.entityType = ENTITY_PLAYER;
 	Enemy.sprite = SheetSprite(enemyWorm);
 	Enemy.entityType = ENTITY_ENEMY;
 	Enemy.acceleration_x = 1.0f;
+	Enemy.enemyState = ENEMY_NORMAL;
 	Enemy2.sprite = SheetSprite(enemyWorm);
 	Enemy2.entityType = ENTITY_ENEMY;
 	Enemy2.enemyState = ENEMY_NORMAL;
@@ -396,8 +397,16 @@ void processEvents(){
 		else if (event.type == SDL_KEYDOWN && currentState == STATE_GAME){
 			if (event.key.keysym.scancode == SDL_SCANCODE_SPACE && Player.collidedBottom){
 				Mix_PlayChannel(-1, jump, 0);
-				Player.velocity_y = 3.0f;
+				Player.velocity_y = 5.0f;
 				Player.actionState = ACTION_JUMPING;
+
+			}
+		}
+		else if (event.type == SDL_KEYUP && currentState == STATE_GAME)
+		{
+			if (Player.velocity_y > 0.5f)
+			{
+				Player.velocity_y = 2.0f;
 			}
 		}
 	}
@@ -405,7 +414,7 @@ void processEvents(){
 void resetLevelDefaults()
 {
 	Player.isAlive = true;
-	Player.x = 0.0f;
+	Player.x = 0.5f;
 	Player.y = -0.380f -12.0f;
 	Player.acceleration_x = 0.0f;
 	Player.acceleration_y = 0.0f;
@@ -426,8 +435,20 @@ void penetrationUpdate(Entity* entity)
 	float left = entity->x - entity->getWidth() * 0.5f;
 	float right = entity->x + entity->getWidth() * 0.5f;
 	float penetration = 0.0f;
+//Penetration Bot
 	worldToTileCoordinates(entity->x - entity->getWidth() / 2, entity->y - entity->getHeight() / 2, &currX1, &currY1);
 	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y - entity->getHeight() / 2, &currX2, &currY2);
+	bool penetration1 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY1][currX1]) != std::end(staticTilesIndex);
+	bool penetration2 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY2][currX2]) != std::end(staticTilesIndex);
+	if (penetration1 || penetration2)
+	{
+		penetration = fabs((-TILE_SIZE*(currY1)) - bot);
+		entity->y += penetration + 0.000009f;
+		entity->collidedBottom = true;
+	}
+
+
+
 	if (levelData[currY1][currX1] == 95 || levelData[currY2][currX2] == 95 || levelData[currY1][currX1] == 9 || levelData[currY2][currX2] == 9)
 	{
 		penetration = fabs((-TILE_SIZE*(currY1)) - bot);
@@ -437,6 +458,15 @@ void penetrationUpdate(Entity* entity)
 	//Penetrate Top
 	worldToTileCoordinates(entity->x - entity->getWidth() / 2, entity->y + entity->getHeight() / 2, &currX1, &currY1);
 	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y + entity->getHeight() / 2, &currX2, &currY2);
+	penetration1 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY1][currX1]) != std::end(staticTilesIndex);
+	penetration2 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY2][currX2]) != std::end(staticTilesIndex);
+	if (penetration1 || penetration2)
+	{
+		penetration = fabs((-TILE_SIZE*(currY1)-TILE_SIZE) - top);
+		entity->y -= penetration + 0.000009f;
+		entity->collidedTop = true;
+		entity->velocity_y = 0.0f;
+	}
 	if (levelData[currY1][currX1] == 95 || levelData[currY2][currX2] == 95 || levelData[currY1][currX1] == 9 || levelData[currY2][currX2] == 9)
 	{
 		penetration = fabs((-TILE_SIZE*(currY1)-TILE_SIZE) - top);
@@ -447,6 +477,15 @@ void penetrationUpdate(Entity* entity)
 	//Penetrate Left
 	worldToTileCoordinates(entity->x - entity->getWidth() / 2, entity->y, &currX1, &currY1);
 	worldToTileCoordinates(entity->x - entity->getWidth() / 2, entity->y, &currX2, &currY2);
+	penetration1 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY1][currX1]) != std::end(staticTilesIndex);
+	penetration2 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY2][currX2]) != std::end(staticTilesIndex);
+	if (penetration1 || penetration2)
+	{
+		penetration = fabs((TILE_SIZE * currX1 + TILE_SIZE) - left);
+		entity->x += penetration + 0.00039f;
+		entity->collidedLeft = true;
+		entity->velocity_x = 5.0f;
+	}
 	if (levelData[currY1][currX1] == 104 || levelData[currY2][currX2] == 104)
 	{
 		penetration = fabs((TILE_SIZE * currX1 + TILE_SIZE) - left);
@@ -458,6 +497,15 @@ void penetrationUpdate(Entity* entity)
 	//Penetrate Right
 	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y, &currX1, &currY1);
 	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y, &currX2, &currY2);
+	penetration1 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY1][currX1]) != std::end(staticTilesIndex);
+	penetration2 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY2][currX2]) != std::end(staticTilesIndex);
+	if (penetration1 || penetration2)
+	{
+		penetration = fabs((TILE_SIZE * currX1) - right);
+		entity->x -= (penetration + 3.00039f);
+		entity->collidedRight = true;
+		entity->velocity_x = 0.0f;
+	}
 	if (levelData[currY1][currX1] == 104 || levelData[currY2][currX2] == 104)
 	{
 		penetration = fabs((TILE_SIZE * currX1) - right);
@@ -495,6 +543,35 @@ void edgeTurns(Entity* entity)
 			entity->acceleration_x *= -1.0f;
 		}
 	}
+}
+void detectEntity(Entity* entity, Entity* target)
+{
+	float bot = entity->y - entity->getHeight() * 0.5f;
+	float top = entity->y + entity->getHeight() * 0.5f;
+	float left = entity->x - entity->getWidth() * 0.5f;
+	float right = entity->x + entity->getWidth() * 0.5f;
+	float midHeight = entity->y;
+
+	float targetBot = target->y - target->getHeight() * 0.5f;
+	float targetTop = target->y + target->getHeight() * 0.5f;
+	float targetLeft = target->x - target->getWidth() * 0.5f;
+	float targetRight = target->x + target->getWidth() * 0.5f;
+
+	float detectionRange = 2 * TILE_SIZE;
+	float leftDetect = left - detectionRange;
+	float rightDetect = right + detectionRange;
+	
+		if (leftDetect < targetRight && leftDetect > targetLeft ){
+			entity->enemyState = ENEMY_ANGRY;
+			entity->acceleration_x = -3.0f;
+		}
+	
+	
+		else if (rightDetect > targetLeft && rightDetect < targetRight && midHeight < targetTop && midHeight > targetBot){
+			entity->enemyState = ENEMY_ANGRY;
+			entity->acceleration_x = 3.0f;
+		}
+	
 }
 void update(float elapsed){
 	if (currentState == STATE_TITLE_SCREEN)
@@ -547,17 +624,19 @@ void update(float elapsed){
 			}
 		}
 
-
+		//if (Player.x <= 0.01f)
+		//	Player.x = 0.01f;
 		penetrationUpdate(&Player);
-		penetrationUpdate(&Enemy);
-		penetrationUpdate(&Enemy2);
-		Player.performCollision(&Enemy);
-		Player.performCollision(&Enemy2);
-		//Enemy.performCollision(&Player);
-		
-		edgeTurns(&Enemy);
-		Enemy.update(elapsed, FRICTION, GRAVITY);
-		Enemy2.update(elapsed, FRICTION, GRAVITY);
+		//penetrationUpdate(&Enemy);
+		//penetrationUpdate(&Enemy2);
+		//Player.performCollision(&Enemy);
+		//Player.performCollision(&Enemy2);
+		////Enemy.performCollision(&Player);
+		//
+		//edgeTurns(&Enemy);
+		//detectEntity(&Enemy2, &Player);
+		//Enemy.update(elapsed, FRICTION, GRAVITY);
+		//Enemy2.update(elapsed, FRICTION, GRAVITY);
 		Player.update(elapsed, FRICTION, GRAVITY);
 		if (!Player.isAlive && currentState == STATE_GAME){
 			currentState = STATE_GAME_OVER;

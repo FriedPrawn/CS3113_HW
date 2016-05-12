@@ -6,15 +6,15 @@ enum EnemyType
 {
 	ENEMY_WORM
 };
-enum State
+enum Statez
 {
-	PATROL, IDLE, ANGRY
+	E_PATROL, E_NORMAL, E_ANGRY
 };
 class Enemy : public Entity
 {
 public:
 	Enemy();
-
+	void detectEntity(Entity* target, float tileRange);
 	EnemyType type;
-	State state;
+	Statez state;
 };

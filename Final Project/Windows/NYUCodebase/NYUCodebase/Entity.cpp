@@ -93,6 +93,7 @@ void Entity::performCollision(Entity *entity)
 	if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY) && stomps && collides && actionState == ACTION_JUMPING)
 	{
 		entity->isAlive = false;
+		velocity_y += 5.5f;
 	}
 	else if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY)  && collides)
 	{
@@ -101,6 +102,29 @@ void Entity::performCollision(Entity *entity)
 }
 void Entity::update(float elapsed, float friction_x, float gravity_y)
 {
+	if (x <= 0.01f)
+	{
+		x = 0.01f;
+	}
+	if (x >= (128 * 0.4f) - 0.01f)
+	{
+		x = (128 * 0.4f) - 0.01f;
+	}
+	if (enemyState == ENEMY_ANGRY)
+	{
+		timeChasing += elapsed;
+		/*if (acceleration_x < 0.0f)
+			acceleration_x = -3.0f;
+		else{
+			acceleration_x = 3.0f;
+		}*/
+		if (timeChasing >= 0.4f){
+			enemyState = ENEMY_NORMAL;
+			timeChasing = 0.0f;
+			acceleration_x = 0.0f;
+		}
+
+	}
 	if (!isStatic && isAlive)
 	{
 		velocity_x = lerp(velocity_x, 0.0f, elapsed * friction_x);

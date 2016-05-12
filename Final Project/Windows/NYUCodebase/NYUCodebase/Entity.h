@@ -19,12 +19,9 @@ enum Action
 };
 enum EnemyState
 {
-	ENEMY_ANGRY, ENEMY_NORMAL, ENEMY_RETURNING
+	ENEMY_ANGRY, ENEMY_NORMAL, ENEMY_RETURNING, INVALID
 };
-enum EnemyType
-{
-	ENEMY_WORM
-};
+
 class Entity
 {
 public: 
