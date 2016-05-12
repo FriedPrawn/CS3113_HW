@@ -13,7 +13,20 @@ Entity::Entity(SheetSprite sprite, bool isStatic, float x, float y, float veloci
 	actionState(ACTION_IDLE),
 	timeChasing(0.0f)
 	{}
-
+Entity::Entity(EntityType entityType, SheetSprite sprite, bool isStatic, float x, float y, float velocity_x, float velocity_y, float acceleration_x, float acceleration_y) :
+sprite(sprite),
+isStatic(isStatic),
+entityType(entityType),
+velocity_x(velocity_x),
+velocity_y(velocity_y),
+acceleration_x(acceleration_x),
+acceleration_y(acceleration_y),
+x(x),
+y(y),
+isAlive(true),
+actionState(ACTION_IDLE),
+timeChasing(0.0f)
+{}
 float Entity::getWidth()
 {
 	return (sprite.width/sprite.height) * sprite.size;
@@ -90,7 +103,7 @@ void Entity::performCollision(Entity *entity)
 
 	//}
 	bool stomps = (bot < targetTop );
-	if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY) && stomps && collides && actionState == ACTION_JUMPING)
+	if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY) && stomps && collides && (actionState == ACTION_JUMPING || !collidedBottom))
 	{
 		entity->isAlive = false;
 		velocity_y += 5.5f;
@@ -110,6 +123,12 @@ void Entity::update(float elapsed, float friction_x, float gravity_y)
 	{
 		x = (128 * 0.4f) - 0.01f;
 	}
+	if (y <= 31 * -0.4f)
+	{
+		y = 32 * -0.4f + 0.8f;
+		isAlive = false;
+
+	}
 	if (enemyState == ENEMY_ANGRY)
 	{
 		timeChasing += elapsed;
@@ -118,7 +137,7 @@ void Entity::update(float elapsed, float friction_x, float gravity_y)
 		else{
 			acceleration_x = 3.0f;
 		}*/
-		if (timeChasing >= 0.4f){
+		if (timeChasing >= 1.0f){
 			enemyState = ENEMY_NORMAL;
 			timeChasing = 0.0f;
 			acceleration_x = 0.0f;

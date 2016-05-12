@@ -57,6 +57,7 @@ int * currGridY = new int;
 GLuint tileset;
 GLuint tileset2;
 GLuint backgroudTexture;
+GLuint enemyWormTexture;
 float placeXD = 0.0f;
 Mix_Music *music;
 Mix_Chunk *jump;
@@ -69,6 +70,7 @@ float animationElapsed = 0.0f;
 float framesPerSecond = 60.0f;
 int currentIndex = 0;
 vector<int> staticTilesIndex{9,140,66,89,50,66};
+vector<Entity*> enemiesOne;
 
 GLuint loadTexture(const char* imagePath)
 {
@@ -209,24 +211,17 @@ bool readEntityData(std::ifstream &stream) {
 			float placeX = float (atoi(xPosition.c_str()) / tileWidth) * TILE_SIZE;
 			float placeY = float (atoi(yPosition.c_str()) / tileHeight) * -TILE_SIZE;
 			
-			if (type == "Ground")
-			{
-				Enemy.x = placeX - 0;
-				Enemy.y = placeY;
-				placeXD = placeX;
-			}
+
 			if (type == "Worm")
 			{
-				Enemy.x = placeX;
-				Enemy.y = placeY;
-				placeXD = placeX;
+			
+				enemiesOne.push_back(new Entity(ENTITY_ENEMY,SheetSprite(enemyWormTexture), false, placeX, placeY, 0.0f, 0.0f, 1.0f ));
+				if (enemiesOne.size() == 2)
+				{
+					enemiesOne[1]->acceleration_x = 0.0f;
+				}
 			}
-			if (type == "Worm2")
-			{
-				Enemy2.x = placeX;
-				Enemy2.y = placeY;
-				placeXD = placeX;
-			}
+	
 		}
 	}
 	return true;
@@ -235,7 +230,7 @@ void loadLevel()
 {
 	tileset = loadTexture(RESOURCE_FOLDER"tiles_spritesheet1.png");
 	//ifstream infile("alienlevel1.txt");
-	ifstream infile("Level1.txt");
+	ifstream infile("Level1a.txt");
 
 	string line;
 	while (getline(infile, line)){
@@ -355,6 +350,7 @@ void setup(){
 	GLuint spriteSheetTexture = loadTexture(RESOURCE_FOLDER"aliens.png");
 	GLuint greenAlienSpriteSheet = loadTexture(RESOURCE_FOLDER"p1_spritesheet.png");
 	GLuint enemyWorm = loadTexture(RESOURCE_FOLDER"slimeWalk1.png");
+	enemyWormTexture = loadTexture(RESOURCE_FOLDER"slimeWalk1.png");
 	backgroudTexture = loadTexture(RESOURCE_FOLDER"bg_grasslands.png");
 	fontSheet = loadTexture(RESOURCE_FOLDER"font1.png");
 	
@@ -376,13 +372,7 @@ void setup(){
 	Player = Entity(SheetSprite(greenAlienSpriteSheet, 67.0f / 508.0f, 196.0f / 288.0f, 66.0f / 508.0f, 92.0f /
 		288.0f, 0.7f), false, 0.5f, -0.380f - 10.0f);
 	Player.entityType = ENTITY_PLAYER;
-	Enemy.sprite = SheetSprite(enemyWorm);
-	Enemy.entityType = ENTITY_ENEMY;
-	Enemy.acceleration_x = 1.0f;
-	Enemy.enemyState = ENEMY_NORMAL;
-	Enemy2.sprite = SheetSprite(enemyWorm);
-	Enemy2.entityType = ENTITY_ENEMY;
-	Enemy2.enemyState = ENEMY_NORMAL;
+
 
 
 	background = SheetSprite(backgroudTexture, 0.0f, 0.0f, 1024.0f, 512.0f, 7.0f);
@@ -415,12 +405,17 @@ void resetLevelDefaults()
 {
 	Player.isAlive = true;
 	Player.x = 0.5f;
-	Player.y = -0.380f -12.0f;
+	Player.y = -0.380f -10.0f;
 	Player.acceleration_x = 0.0f;
 	Player.acceleration_y = 0.0f;
 	Player.velocity_x = 0.0f;
 	Player.velocity_y = 0.0f;
-	Enemy.isAlive = true;
+	for (Entity* e : enemiesOne)
+	{
+		delete e;
+	}
+	enemiesOne.clear();
+
 	loadLevel();
 }
 void penetrationUpdate(Entity* entity)
@@ -528,22 +523,30 @@ void edgeTurns(Entity* entity)
 	float bot = entity->y - entity->getHeight() * 0.75f;
 	float top = entity->y + entity->getHeight() * 0.5f;
 	float left = entity->x - entity->getWidth() * 0.7f;
-	float right = entity->x + entity->getWidth() * 0.65f;
+	float right = entity->x + entity->getWidth() * 0.75f;
 	float penetration = 0.0f;
 	worldToTileCoordinates(left, bot, &currX1, &currY1);
 	worldToTileCoordinates(right, bot, &currX2, &currY2);
-	if (entity->acceleration_x > 0.0f){
-		if (levelData[currY2][currX2] != 9 && entity->collidedBottom)
+	bool penetration1 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY1][currX1]) != std::end(staticTilesIndex);
+	bool penetration2 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY2][currX2]) != std::end(staticTilesIndex);
+
+		if (!penetration2 && entity->collidedBottom)
 		{
+			if (entity->acceleration_x > 0.0f)
 				entity->acceleration_x *= -1.0f;
 		}
-	}
-	else {
-		if (levelData[currY1][currX1] != 9 && entity->collidedBottom)
+	
+		else if (!penetration1 && entity->collidedBottom)
+		{
+			if (entity->acceleration_x <= 0.0f)
+				entity->acceleration_x *= -1.0f;
+		}
+
+
+		if (entity->collidedLeft || entity->collidedRight)
 		{
 			entity->acceleration_x *= -1.0f;
 		}
-	}
 }
 void detectEntity(Entity* entity, Entity* target)
 {
@@ -562,15 +565,15 @@ void detectEntity(Entity* entity, Entity* target)
 	float leftDetect = left - detectionRange;
 	float rightDetect = right + detectionRange;
 	
-		if (leftDetect < targetRight && leftDetect > targetLeft ){
+		if (leftDetect < targetLeft && targetRight < left && entity->enemyState != ENEMY_ANGRY){
 			entity->enemyState = ENEMY_ANGRY;
-			entity->acceleration_x = -3.0f;
+			entity->acceleration_x = -2.0f;
 		}
 	
 	
-		else if (rightDetect > targetLeft && rightDetect < targetRight && midHeight < targetTop && midHeight > targetBot){
+		else if (rightDetect > targetLeft && rightDetect < targetRight ){
 			entity->enemyState = ENEMY_ANGRY;
-			entity->acceleration_x = 3.0f;
+			entity->acceleration_x = 2.0f;
 		}
 	
 }
@@ -579,14 +582,29 @@ void update(float elapsed){
 	{
 		if (keys[SDL_SCANCODE_RETURN]){
 			currentState = STATE_GAME;
-			if (!Player.isAlive)
-				resetLevelDefaults();
+			if (!Player.isAlive){
+				//resetLevelDefaults();
+				Player.isAlive = true;
+				Player.x = 0.5f;
+				Player.y = -0.5f;
+				Player.acceleration_x = 0.0f;
+				Player.acceleration_y = 0.0f;
+				Player.velocity_x = 0.0f;
+				Player.velocity_y = 0.0f;
+			}
 		}
 		if (keys[SDL_SCANCODE_Q]){
 			done = true;
 		}
 		if (keys[SDL_SCANCODE_R]){
 			currentState = STATE_GAME;
+			/*for (Entity* e: enemiesOne )
+			{
+				delete e;
+			}
+			enemiesOne.clear();
+			Player.x = 0.5f;
+			loadLevel();*/
 			resetLevelDefaults();
 		}
 	}
@@ -604,11 +622,17 @@ void update(float elapsed){
 		{
 			currentState = STATE_TITLE_SCREEN;
 		}
-		if (keys[SDL_SCANCODE_LEFT] && !Player.collidedLeft){
+		if (keys[SDL_SCANCODE_LEFT] && !Player.collidedLeft && !Player.actionState == ACTION_JUMPING){
 			Player.acceleration_x = -4.0f;
 		}
-		else if (keys[SDL_SCANCODE_RIGHT] && !Player.collidedRight){
+		else if (keys[SDL_SCANCODE_LEFT] && !Player.collidedLeft && Player.actionState == ACTION_JUMPING){
+			Player.acceleration_x = -2.0f;
+		}
+		else if (keys[SDL_SCANCODE_RIGHT] && !Player.collidedRight && !Player.actionState == ACTION_JUMPING){
 			Player.acceleration_x = 4.0f;
+		}
+		else if (keys[SDL_SCANCODE_RIGHT] && !Player.collidedRight && Player.actionState == ACTION_JUMPING){
+			Player.acceleration_x = 2.0f;
 		}
 		else{
 			Player.acceleration_x = 0.0f;
@@ -628,6 +652,17 @@ void update(float elapsed){
 		//if (Player.x <= 0.01f)
 		//	Player.x = 0.01f;
 		penetrationUpdate(&Player);
+		for (size_t i = 0; i < enemiesOne.size(); i++)
+		{
+			penetrationUpdate(enemiesOne[i]);
+			Player.performCollision(enemiesOne[i]);
+			enemiesOne[i]->update(elapsed, FRICTION, GRAVITY);
+			if (i!=1)
+				edgeTurns(enemiesOne[i]);
+			else{
+				detectEntity(enemiesOne[i], &Player);
+			}
+		}
 		//penetrationUpdate(&Enemy);
 		//penetrationUpdate(&Enemy2);
 		//Player.performCollision(&Enemy);
@@ -744,11 +779,15 @@ void render(){
 			Player.sprite.DrawUniformSheet(program, modelMatrix, Player.x, Player.y, runAnimation[currentIndex], 7, 3);
 		}
 		//Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
-		if (Enemy.isAlive)
-			Enemy.sprite.Draw(program, modelMatrix, Enemy.x, Enemy.y);
-		Enemy2.sprite.Draw(program, modelMatrix, Enemy2.x, Enemy2.y);
+		//if (Enemy.isAlive)
+			//Enemy.sprite.Draw(program, modelMatrix, Enemy.x, Enemy.y);
+		//Enemy2.sprite.Draw(program, modelMatrix, Enemy2.x, Enemy2.y);
 		std::cout << placeXD << Player.isAlive << Enemy.isAlive;
 		//background.Draw(program, modelMatrix, 0.0f, 0.0f);
+		for (size_t i = 0; i < enemiesOne.size(); i++)
+		{
+			enemiesOne[i]->sprite.Draw(program, modelMatrix, enemiesOne[i]->x, enemiesOne[i]->y);
+		}
 		std::cout << Player.x << endl;
 		viewMatrix.identity();
 		viewMatrix.Translate(-1 * Player.x, -1 * Player.y, 0.0f);

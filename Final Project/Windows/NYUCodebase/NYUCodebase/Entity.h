@@ -27,6 +27,7 @@ class Entity
 public: 
 	//Entity(SheetSprite sprite = SheetSprite(), bool isStatic = false, float velocity_x = 0.0f, float velocity_y = 0.0f, float acceleration_x = 0.0f, float acceleration_y = 0.0f, float x = 0.0f, float y = 0.0f, float width = 0.25f, float height = 0.25f);
 	Entity(SheetSprite sprite = SheetSprite(), bool isStatic = false, float x = 0.0f, float y = 0.0f, float velocity_x = 0.0f, float velocity_y = 0.0f, float acceleration_x = 0.0f, float acceleration_y = 0.0f );
+	Entity(EntityType entityType, SheetSprite sprite = SheetSprite(), bool isStatic = false, float x = 0.0f, float y = 0.0f, float velocity_x = 0.0f, float velocity_y = 0.0f, float acceleration_x = 0.0f, float acceleration_y = 0.0f);
 	void update(float elapsed, float friction_x = 0.0f, float gravity_y = 0.0f);
 	void Render(ShaderProgram *program);
 	void performCollision(Entity *entity);
