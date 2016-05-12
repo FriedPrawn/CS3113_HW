@@ -43,8 +43,9 @@ Entity* tiles[10];
 SheetSprite background;
 GLuint fontSheet = 0;
 ShaderProgram* program;
-enum GameState { STATE_TITLE_SCREEN, STATE_GAME, STATE_GAME_OVER};
+enum GameState { STATE_TITLE_SCREEN, STATE_GAME, STATE_LEVEL2, STATE_LEVEL3, STATE_GAME_OVER};
 GameState currentState = STATE_TITLE_SCREEN;
+GameState latestLevel = STATE_GAME;
 bool gameOver = false;
 int mapWidth;
 int mapHeight;
@@ -61,7 +62,7 @@ GLuint enemyWormTexture;
 float placeXD = 0.0f;
 Mix_Music *music;
 Mix_Chunk *jump;
-
+bool firstTime = true;
 
 //animation
 const int runAnimation[] = { 0, 1, 2, 7, 8, 9, 3, 4, 11, 5 };
@@ -69,8 +70,11 @@ const int numFrames = 10;
 float animationElapsed = 0.0f;
 float framesPerSecond = 60.0f;
 int currentIndex = 0;
-vector<int> staticTilesIndex{9,140,66,89,50,66};
+vector<int> staticTilesIndex{9,140,66,89,50,66, 26, 15, 123, 91, 27, 134, 22};
+vector<int> lavaTilesIndex{ 127, 7};
 vector<Entity*> enemiesOne;
+vector<Entity*> enemiesTwo;
+vector<Entity*> enemiesThree;
 
 GLuint loadTexture(const char* imagePath)
 {
@@ -214,12 +218,28 @@ bool readEntityData(std::ifstream &stream) {
 
 			if (type == "Worm")
 			{
-			
-				enemiesOne.push_back(new Entity(ENTITY_ENEMY,SheetSprite(enemyWormTexture), false, placeX, placeY, 0.0f, 0.0f, 1.0f ));
-				if (enemiesOne.size() == 2)
-				{
-					enemiesOne[1]->acceleration_x = 0.0f;
+				if (currentState == STATE_GAME){
+					enemiesOne.push_back(new Entity(ENTITY_ENEMY, SheetSprite(enemyWormTexture), false, placeX, placeY, 0.0f, 0.0f, 1.0f));
+					if (enemiesOne.size() == 2)
+					{
+						enemiesOne[1]->acceleration_x = 0.0f;
+					}
 				}
+				else if (currentState == STATE_LEVEL2)
+				{
+					enemiesTwo.push_back(new Entity(ENTITY_ENEMY, SheetSprite(enemyWormTexture), false, placeX, placeY, 0.0f, 0.0f, 0.0f));
+				
+				}
+				else if (currentState == STATE_LEVEL3)
+				{
+					enemiesThree.push_back(new Entity(ENTITY_ENEMY, SheetSprite(enemyWormTexture), false, placeX, placeY, 0.0f, 0.0f, 1.0f));
+				}
+			}
+			if (type == "Start")
+			{
+
+				Player.x = placeX;
+				Player.y = placeY;
 			}
 	
 		}
@@ -250,7 +270,54 @@ void loadLevel()
 	infile.close();
 
 }
+void loadLevel2()
+{
+	tileset = loadTexture(RESOURCE_FOLDER"tiles_spritesheet1.png");
+	//ifstream infile("alienlevel1.txt");
+	ifstream infile("level2.txt");
 
+	string line;
+	while (getline(infile, line)){
+		if (line == "[header]")
+		{
+			if (!readHeader(infile)){
+				return;
+			}
+		}
+		else if (line == "[layer]"){
+			readLayerData(infile);
+		}
+		else if (line == "[ObjectsLayer]"){
+			readEntityData(infile);
+		}
+	}
+	infile.close();
+
+}
+void loadLevel3()
+{
+	tileset = loadTexture(RESOURCE_FOLDER"tiles_spritesheet1.png");
+	//ifstream infile("alienlevel1.txt");
+	ifstream infile("Level3.txt");
+
+	string line;
+	while (getline(infile, line)){
+		if (line == "[header]")
+		{
+			if (!readHeader(infile)){
+				return;
+			}
+		}
+		else if (line == "[layer]"){
+			readLayerData(infile);
+		}
+		else if (line == "[ObjectsLayer]"){
+			readEntityData(infile);
+		}
+	}
+	infile.close();
+
+}
 void renderLevel()
 {
 	glEnable(GL_BLEND);
@@ -322,7 +389,32 @@ void worldToTileCoordinates(float worldX, float worldY, int *gridX, int *gridY) 
 	*gridX = (int)(worldX / TILE_SIZE);
 	*gridY = (int)(-worldY / TILE_SIZE);
 }
+void resetLevelDefaults()
+{
+	Player.isAlive = true;
+	Player.x = 0.5f;
+	Player.y = -0.380f - 10.0f;
+	Player.acceleration_x = 0.0f;
+	Player.acceleration_y = 0.0f;
+	Player.velocity_x = 0.0f;
+	Player.velocity_y = 0.0f;
+	for (Entity* e : enemiesOne)
+	{
+		delete e;
+	}
+	enemiesOne.clear();
+	for (Entity* e : enemiesTwo)
+	{
+		delete e;
+	}
+	enemiesTwo.clear();
+	for (Entity* e : enemiesThree)
+	{
+		delete e;
+	}
+	enemiesThree.clear();
 
+}
 void setup(){
 	//SDL
 	SDL_Init(SDL_INIT_VIDEO);
@@ -357,8 +449,8 @@ void setup(){
 	Mix_Init(MIX_INIT_MP3);
 	Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096);
 
-	//music = Mix_LoadMUS("song.mp3");
-	//Mix_PlayMusic(music, -1);
+	music = Mix_LoadMUS("song.mp3");
+	Mix_PlayMusic(music, -1);
 	jump = Mix_LoadWAV("jump_11.wav");
 
 	glUseProgram(program->programID);
@@ -376,6 +468,7 @@ void setup(){
 
 
 	background = SheetSprite(backgroudTexture, 0.0f, 0.0f, 1024.0f, 512.0f, 7.0f);
+	resetLevelDefaults();
 	loadLevel();
 	
 }
@@ -384,7 +477,7 @@ void processEvents(){
 		if (event.type == SDL_QUIT || event.type == SDL_WINDOWEVENT_CLOSE) {
 			done = true;
 		}
-		else if (event.type == SDL_KEYDOWN && currentState == STATE_GAME){
+		else if (event.type == SDL_KEYDOWN && (currentState == STATE_GAME || currentState == STATE_LEVEL2 || currentState == STATE_LEVEL3)){
 			if (event.key.keysym.scancode == SDL_SCANCODE_SPACE && Player.collidedBottom){
 				Mix_PlayChannel(-1, jump, 0);
 				Player.velocity_y = 5.0f;
@@ -392,7 +485,7 @@ void processEvents(){
 
 			}
 		}
-		else if (event.type == SDL_KEYUP && currentState == STATE_GAME)
+		else if (event.type == SDL_KEYUP && (currentState == STATE_GAME || currentState == STATE_LEVEL2 || currentState == STATE_LEVEL3))
 		{
 			if (Player.velocity_y > 0.5f)
 			{
@@ -401,11 +494,12 @@ void processEvents(){
 		}
 	}
 }
-void resetLevelDefaults()
+
+void resetLevelDefaults2()
 {
 	Player.isAlive = true;
 	Player.x = 0.5f;
-	Player.y = -0.380f -10.0f;
+	Player.y = 0.0f;
 	Player.acceleration_x = 0.0f;
 	Player.acceleration_y = 0.0f;
 	Player.velocity_x = 0.0f;
@@ -415,8 +509,43 @@ void resetLevelDefaults()
 		delete e;
 	}
 	enemiesOne.clear();
-
-	loadLevel();
+	for (Entity* e : enemiesTwo)
+	{
+		delete e;
+	}
+	enemiesTwo.clear();
+	for (Entity* e : enemiesThree)
+	{
+		delete e;
+	}
+	enemiesThree.clear();
+	
+}
+void resetLevelDefaults3()
+{
+	Player.isAlive = true;
+	Player.x = 0.5f;
+	Player.y = 0.0f;
+	Player.acceleration_x = 0.0f;
+	Player.acceleration_y = 0.0f;
+	Player.velocity_x = 0.0f;
+	Player.velocity_y = 0.0f;
+	for (Entity* e : enemiesOne)
+	{
+		delete e;
+	}
+	enemiesOne.clear();
+	for (Entity* e : enemiesTwo)
+	{
+		delete e;
+	}
+	enemiesTwo.clear();
+	for (Entity* e : enemiesThree)
+	{
+		delete e;
+	}
+	enemiesThree.clear();
+	
 }
 void penetrationUpdate(Entity* entity)
 {
@@ -435,6 +564,12 @@ void penetrationUpdate(Entity* entity)
 	worldToTileCoordinates(entity->x + (0.95f* entity->getWidth() / 2), entity->y - entity->getHeight() / 2, &currX2, &currY2);
 	bool penetration1 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY1][currX1]) != std::end(staticTilesIndex);
 	bool penetration2 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY2][currX2]) != std::end(staticTilesIndex);
+	bool lava1 = std::find(std::begin(lavaTilesIndex), std::end(lavaTilesIndex), levelData[currY1][currX1]) != std::end(lavaTilesIndex);
+	bool lava2 = std::find(std::begin(lavaTilesIndex), std::end(lavaTilesIndex), levelData[currY2][currX2]) != std::end(lavaTilesIndex);
+	if ((lava1 || lava2) && entity->entityType == ENTITY_PLAYER)
+	{
+		currentState = STATE_GAME_OVER;
+	}
 	if (penetration1 || penetration2)
 	{
 		penetration = fabs((-TILE_SIZE*(currY1)) - bot);
@@ -443,14 +578,6 @@ void penetrationUpdate(Entity* entity)
 		entity->velocity_y = 0.0f;
 	}
 
-
-
-	if (levelData[currY1][currX1] == 95 || levelData[currY2][currX2] == 95 || levelData[currY1][currX1] == 9 || levelData[currY2][currX2] == 9)
-	{
-		penetration = fabs((-TILE_SIZE*(currY1)) - bot);
-		entity->y += penetration + 0.000009f;
-		entity->collidedBottom = true;
-	}
 	//Penetrate Top
 	worldToTileCoordinates(entity->x - (0.95f*entity->getWidth() / 2), entity->y + entity->getHeight() / 2, &currX1, &currY1);
 	worldToTileCoordinates(entity->x + (0.95f*entity->getWidth() / 2), entity->y + entity->getHeight() / 2, &currX2, &currY2);
@@ -463,13 +590,7 @@ void penetrationUpdate(Entity* entity)
 		entity->collidedTop = true;
 		entity->velocity_y = 0.0f;
 	}
-	if (levelData[currY1][currX1] == 95 || levelData[currY2][currX2] == 95 || levelData[currY1][currX1] == 9 || levelData[currY2][currX2] == 9)
-	{
-		penetration = fabs((-TILE_SIZE*(currY1)-TILE_SIZE) - top);
-		entity->y -= penetration + 0.000009f;
-		entity->collidedTop = true;
-		entity->velocity_y = 0.0f;
-	}
+
 	//Penetrate Left
 	worldToTileCoordinates(entity->x - entity->getWidth() / 2, entity->y, &currX1, &currY1);
 	worldToTileCoordinates(entity->x - entity->getWidth() / 2, entity->y, &currX2, &currY2);
@@ -481,13 +602,6 @@ void penetrationUpdate(Entity* entity)
 		entity->x += penetration + 0.00039f;
 		entity->collidedLeft = true;
 		entity->velocity_x = 5.0f;
-	}
-	if (levelData[currY1][currX1] == 104 || levelData[currY2][currX2] == 104)
-	{
-		penetration = fabs((TILE_SIZE * currX1 + TILE_SIZE) - left);
-		entity->x += penetration + 0.00039f;
-		entity->collidedLeft = true;
-		entity->velocity_x = 0.0f;
 	}
 
 	//Penetrate Right
@@ -502,13 +616,7 @@ void penetrationUpdate(Entity* entity)
 		entity->collidedRight = true;
 		entity->velocity_x = 0.0f;
 	}
-	if (levelData[currY1][currX1] == 104 || levelData[currY2][currX2] == 104)
-	{
-		penetration = fabs((TILE_SIZE * currX1) - right);
-		entity->x -= penetration + 0.00039f;
-		entity->collidedRight = true;
-		entity->velocity_x = 0.0f;
-	}
+
 }
 void edgeTurns(Entity* entity)
 {
@@ -523,7 +631,7 @@ void edgeTurns(Entity* entity)
 	float bot = entity->y - entity->getHeight() * 0.75f;
 	float top = entity->y + entity->getHeight() * 0.5f;
 	float left = entity->x - entity->getWidth() * 0.7f;
-	float right = entity->x + entity->getWidth() * 0.75f;
+	float right = entity->x + entity->getWidth() * 0.65f;
 	float penetration = 0.0f;
 	worldToTileCoordinates(left, bot, &currX1, &currY1);
 	worldToTileCoordinates(right, bot, &currX2, &currY2);
@@ -565,13 +673,13 @@ void detectEntity(Entity* entity, Entity* target)
 	float leftDetect = left - detectionRange;
 	float rightDetect = right + detectionRange;
 	
-		if (leftDetect < targetLeft && targetRight < left && entity->enemyState != ENEMY_ANGRY){
+	if (leftDetect < targetLeft && targetRight < left && entity->enemyState != ENEMY_ANGRY && midHeight<targetTop && midHeight>targetBot){
 			entity->enemyState = ENEMY_ANGRY;
 			entity->acceleration_x = -2.0f;
 		}
 	
 	
-		else if (rightDetect > targetLeft && rightDetect < targetRight ){
+	else if (rightDetect > targetLeft && rightDetect < targetRight && midHeight<targetTop && midHeight>targetBot &&entity->enemyState != ENEMY_ANGRY){
 			entity->enemyState = ENEMY_ANGRY;
 			entity->acceleration_x = 2.0f;
 		}
@@ -581,39 +689,111 @@ void update(float elapsed){
 	if (currentState == STATE_TITLE_SCREEN)
 	{
 		if (keys[SDL_SCANCODE_RETURN]){
-			currentState = STATE_GAME;
-			if (!Player.isAlive){
-				//resetLevelDefaults();
-				Player.isAlive = true;
-				Player.x = 0.5f;
-				Player.y = -0.5f;
-				Player.acceleration_x = 0.0f;
-				Player.acceleration_y = 0.0f;
-				Player.velocity_x = 0.0f;
-				Player.velocity_y = 0.0f;
-			}
+			
+			currentState = latestLevel;
+
+			
+				if (latestLevel == STATE_GAME){
+					if (firstTime){
+						loadLevel();
+						firstTime = false;
+					}
+					if (!Player.isAlive){
+						resetLevelDefaults();
+						loadLevel();
+					}
+				}
+				else if (latestLevel == STATE_LEVEL2)
+				{
+					//loadLevel2();
+					if (!Player.isAlive){
+						resetLevelDefaults2();
+						loadLevel2();
+					}
+				}
+				else if (latestLevel == STATE_LEVEL3)
+				{
+					//loadLevel2();
+					if (!Player.isAlive){
+						resetLevelDefaults3();
+						loadLevel3();
+					}
+				}
+			
 		}
 		if (keys[SDL_SCANCODE_Q]){
 			done = true;
 		}
 		if (keys[SDL_SCANCODE_R]){
-			currentState = STATE_GAME;
-			/*for (Entity* e: enemiesOne )
-			{
-				delete e;
+			currentState = latestLevel;
+			if (latestLevel == STATE_GAME){
+				//loadLevel();
+				resetLevelDefaults();
+				loadLevel();
 			}
-			enemiesOne.clear();
-			Player.x = 0.5f;
-			loadLevel();*/
+			else if (latestLevel == STATE_LEVEL2)
+			{
+				//loadLevel2();
+				resetLevelDefaults2();
+				loadLevel2();
+			}
+			else if (latestLevel == STATE_LEVEL3)
+			{
+				//loadLevel2();
+				resetLevelDefaults3();
+				loadLevel3();
+			}
+		}
+		if (keys[SDL_SCANCODE_1]){
+			currentState = STATE_GAME;
+			latestLevel = STATE_GAME;
 			resetLevelDefaults();
+			loadLevel();
+			/*if (!Player.isAlive){
+				resetLevelDefaults();
+			}*/
+		}
+		else if (keys[SDL_SCANCODE_2]){
+			currentState = STATE_LEVEL2;
+			latestLevel = STATE_LEVEL2;
+			resetLevelDefaults2();
+			loadLevel2();
+			if (!Player.isAlive){
+				//resetLevelDefaults();
+			}
+		}
+		else if (keys[SDL_SCANCODE_3]){
+			currentState = STATE_LEVEL3;
+			latestLevel = STATE_LEVEL3;
+			resetLevelDefaults3();
+			loadLevel3();
+			if (!Player.isAlive){
+				//resetLevelDefaults();
+			}
 		}
 	}
 	else if (currentState == STATE_GAME_OVER)
 	{
 		if (keys[SDL_SCANCODE_RETURN])
 		{
-			currentState = STATE_GAME;
-			resetLevelDefaults();
+			currentState = latestLevel;
+			if (latestLevel == STATE_GAME){
+				//loadLevel();
+				resetLevelDefaults();
+				loadLevel();
+			}
+			else if (latestLevel == STATE_LEVEL2)
+			{
+				//loadLevel2();
+				resetLevelDefaults2();
+				loadLevel2();
+			}
+			else if (latestLevel == STATE_LEVEL3)
+			{
+				//loadLevel2();
+				resetLevelDefaults3();
+				loadLevel3();
+			}
 		}
 	}
 	else if (currentState == STATE_GAME)
@@ -649,32 +829,133 @@ void update(float elapsed){
 			}
 		}
 
-		//if (Player.x <= 0.01f)
-		//	Player.x = 0.01f;
 		penetrationUpdate(&Player);
-		for (size_t i = 0; i < enemiesOne.size(); i++)
-		{
-			penetrationUpdate(enemiesOne[i]);
-			Player.performCollision(enemiesOne[i]);
-			enemiesOne[i]->update(elapsed, FRICTION, GRAVITY);
-			if (i!=1)
-				edgeTurns(enemiesOne[i]);
-			else{
-				detectEntity(enemiesOne[i], &Player);
+//level 1
+		if (currentState == STATE_GAME){
+			Player.update(elapsed, FRICTION, GRAVITY);
+
+			for (size_t i = 0; i < enemiesOne.size(); i++)
+			{
+				penetrationUpdate(enemiesOne[i]);
+				Player.performCollision(enemiesOne[i]);
+				enemiesOne[i]->update(elapsed, FRICTION, GRAVITY);
+				
+					edgeTurns(enemiesOne[i]);
+				
+					detectEntity(enemiesOne[i], &Player);
+				
 			}
 		}
-		//penetrationUpdate(&Enemy);
-		//penetrationUpdate(&Enemy2);
-		//Player.performCollision(&Enemy);
-		//Player.performCollision(&Enemy2);
-		////Enemy.performCollision(&Player);
-		//
-		//edgeTurns(&Enemy);
-		//detectEntity(&Enemy2, &Player);
-		//Enemy.update(elapsed, FRICTION, GRAVITY);
-		//Enemy2.update(elapsed, FRICTION, GRAVITY);
-		Player.update(elapsed, FRICTION, GRAVITY);
-		if (!Player.isAlive && currentState == STATE_GAME){
+	
+//level 2=================================================================================================================================================
+		if (currentState == STATE_LEVEL2){
+			Player.update(elapsed, FRICTION/2.0f, GRAVITY);
+			for (size_t i = 0; i < enemiesTwo.size(); i++)
+			{
+				penetrationUpdate(enemiesTwo[i]);
+				Player.performCollision(enemiesTwo[i]);
+				enemiesTwo[i]->update(elapsed, FRICTION/2.0f, GRAVITY);
+				edgeTurns(enemiesTwo[i]);
+
+			}
+		}
+		
+		if (!Player.isAlive && (currentState == STATE_GAME || currentState == STATE_LEVEL2)){
+			currentState = STATE_GAME_OVER;
+		}
+	}
+	else if (currentState == STATE_LEVEL2)
+	{
+		if (keys[SDL_SCANCODE_F10])
+		{
+			currentState = STATE_TITLE_SCREEN;
+		}
+		if (keys[SDL_SCANCODE_LEFT] && !Player.collidedLeft && !Player.actionState == ACTION_JUMPING){
+			Player.acceleration_x = -4.0f;
+		}
+		else if (keys[SDL_SCANCODE_LEFT] && !Player.collidedLeft && Player.actionState == ACTION_JUMPING){
+			Player.acceleration_x = -2.0f;
+		}
+		else if (keys[SDL_SCANCODE_RIGHT] && !Player.collidedRight && !Player.actionState == ACTION_JUMPING){
+			Player.acceleration_x = 4.0f;
+		}
+		else if (keys[SDL_SCANCODE_RIGHT] && !Player.collidedRight && Player.actionState == ACTION_JUMPING){
+			Player.acceleration_x = 2.0f;
+		}
+		else{
+			Player.acceleration_x = 0.0f;
+		}
+
+		animationElapsed += elapsed;
+		if (animationElapsed > 1.0 / framesPerSecond) {
+			currentIndex++;
+			animationElapsed = 0.0;
+			if (currentIndex > numFrames - 1) {
+				currentIndex = 0;
+			}
+		}
+
+		penetrationUpdate(&Player);
+			Player.update(elapsed, FRICTION / 2.0f, GRAVITY);
+			for (size_t i = 0; i < enemiesTwo.size(); i++)
+			{
+				penetrationUpdate(enemiesTwo[i]);
+				Player.performCollision(enemiesTwo[i]);
+				enemiesTwo[i]->update(elapsed, FRICTION , GRAVITY);
+				edgeTurns(enemiesTwo[i]);
+
+			}
+		
+
+		if (!Player.isAlive && (currentState == STATE_GAME || currentState == STATE_LEVEL2)){
+			currentState = STATE_GAME_OVER;
+		}
+	}
+//Level 3======================================================================================================================================
+	else if (currentState == STATE_LEVEL3)
+	{
+		if (keys[SDL_SCANCODE_F10])
+		{
+			currentState = STATE_TITLE_SCREEN;
+		}
+		if (keys[SDL_SCANCODE_LEFT] && !Player.collidedLeft && !Player.actionState == ACTION_JUMPING){
+			Player.acceleration_x = -4.0f;
+		}
+		else if (keys[SDL_SCANCODE_LEFT] && !Player.collidedLeft && Player.actionState == ACTION_JUMPING){
+			Player.acceleration_x = -2.0f;
+		}
+		else if (keys[SDL_SCANCODE_RIGHT] && !Player.collidedRight && !Player.actionState == ACTION_JUMPING){
+			Player.acceleration_x = 4.0f;
+		}
+		else if (keys[SDL_SCANCODE_RIGHT] && !Player.collidedRight && Player.actionState == ACTION_JUMPING){
+			Player.acceleration_x = 2.0f;
+		}
+		else{
+			Player.acceleration_x = 0.0f;
+		}
+
+		animationElapsed += elapsed;
+		if (animationElapsed > 1.0 / framesPerSecond) {
+			currentIndex++;
+			animationElapsed = 0.0;
+			if (currentIndex > numFrames - 1) {
+				currentIndex = 0;
+			}
+		}
+
+		penetrationUpdate(&Player);
+			Player.update(elapsed, FRICTION * 2.0f, GRAVITY);
+			for (size_t i = 0; i < enemiesThree.size(); i++)
+			{
+				penetrationUpdate(enemiesThree[i]);
+				Player.performCollision(enemiesThree[i]);
+				enemiesThree[i]->update(elapsed, FRICTION, GRAVITY);
+				edgeTurns(enemiesThree[i]);
+				detectEntity(enemiesThree[i], &Player);
+			}
+		
+
+		if (!Player.isAlive && (currentState == STATE_GAME || currentState == STATE_LEVEL2 || currentState == STATE_LEVEL3)){
 			currentState = STATE_GAME_OVER;
 		}
 	}
@@ -710,19 +991,27 @@ void render(){
 	if (currentState == STATE_TITLE_SCREEN)
 	{
 		modelMatrix.identity();
-		modelMatrix.Translate(-1.2f, 1.5f, 0.0f);
+		modelMatrix.Translate(-1.4f, 1.5f, 0.0f);
 		viewMatrix.identity();
 		program->setModelMatrix(modelMatrix);
 		DrawText(program, fontSheet, "Platformer Demo", 0.3f, -0.1f);
 		modelMatrix.identity();
-		modelMatrix.Translate(-1.67f, 0.0f, 0.0f);
+		modelMatrix.Translate(-1.37f, 0.0f, 0.0f);
 		program->setModelMatrix(modelMatrix);
-		DrawText(program, fontSheet, "Press enter to start", 0.2f, 0.0f);
+		DrawText(program, fontSheet, "Press enter here to start/continue", 0.2f, -0.1f);
 		modelMatrix.identity();
-		modelMatrix.Translate(-1.5f, 0.5f, 0.0f);
+		modelMatrix.Translate(-1.3f, 0.5f, 0.0f);
 		program->setModelMatrix(modelMatrix);
-		DrawText(program, fontSheet, "Press Q to quit game", 0.2f, 0.0f);
-		
+		DrawText(program, fontSheet, "Press Q here to quit game", 0.2f, -0.1f);
+		modelMatrix.identity();
+		modelMatrix.Translate(-1.3f, 1.0f, 0.0f);
+		program->setModelMatrix(modelMatrix);
+		DrawText(program, fontSheet, "Press 1, 2, or 3 to select levels", 0.2f, -0.1f);
+		modelMatrix.identity();
+		modelMatrix.Translate(-1.3f, -0.5f, 0.0f);
+		program->setModelMatrix(modelMatrix);
+		DrawText(program, fontSheet, "Press R here to restart a game", 0.2f, -0.1f);
+
 		modelMatrix.identity();
 		modelMatrix.Translate(-0.50f, -0.5f, 0.0f);
 		program->setModelMatrix(modelMatrix);
@@ -793,6 +1082,54 @@ void render(){
 		viewMatrix.Translate(-1 * Player.x, -1 * Player.y, 0.0f);
 		program->setViewMatrix(viewMatrix);
 	}
+	if (currentState == STATE_LEVEL2){
+
+		renderLevel();
+		if (Player.acceleration_x == 0.0f){
+
+			Player.sprite.u = 67.0f / 508.0f;
+			Player.sprite.v = 196.0f / 288.0f;
+			Player.sprite.width = 66.0f / 508.0f;
+			Player.sprite.height = 92.0f / 288.0f;
+			Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
+			
+		}
+		else{
+			Player.sprite.DrawUniformSheet(program, modelMatrix, Player.x, Player.y, runAnimation[currentIndex], 7, 3);
+		}
+
+		for (size_t i = 0; i < enemiesTwo.size(); i++)
+		{
+			enemiesTwo[i]->sprite.Draw(program, modelMatrix, enemiesTwo[i]->x, enemiesTwo[i]->y);
+		}
+		viewMatrix.identity();
+		viewMatrix.Translate(-1 * Player.x, -1 * Player.y, 0.0f);
+		program->setViewMatrix(viewMatrix);
+	}
+	if (currentState == STATE_LEVEL3){
+
+		renderLevel();
+		if (Player.acceleration_x == 0.0f){
+
+			Player.sprite.u = 67.0f / 508.0f;
+			Player.sprite.v = 196.0f / 288.0f;
+			Player.sprite.width = 66.0f / 508.0f;
+			Player.sprite.height = 92.0f / 288.0f;
+			Player.sprite.Draw(program, modelMatrix, Player.x, Player.y);
+
+		}
+		else{
+			Player.sprite.DrawUniformSheet(program, modelMatrix, Player.x, Player.y, runAnimation[currentIndex], 7, 3);
+		}
+
+		for (size_t i = 0; i < enemiesThree.size(); i++)
+		{
+			enemiesThree[i]->sprite.Draw(program, modelMatrix, enemiesThree[i]->x, enemiesThree[i]->y);
+		}
+		viewMatrix.identity();
+		viewMatrix.Translate(-1 * Player.x, -1 * Player.y, 0.0f);
+		program->setViewMatrix(viewMatrix);
+	}
 	if (currentState == STATE_GAME_OVER){
 		modelMatrix.identity();
 		modelMatrix.Translate(-1.2f, 1.5f, 0.0f);
@@ -802,7 +1139,7 @@ void render(){
 		modelMatrix.identity();
 		modelMatrix.Translate(-1.67f, 0.0f, 0.0f);
 		program->setModelMatrix(modelMatrix);
-		DrawText(program, fontSheet, "Continue?", 0.2f, 0.0f);
+		DrawText(program, fontSheet, "Press enter to continue", 0.2f, 0.0f);
 		modelMatrix.identity();
 		modelMatrix.Translate(-0.50f, -0.5f, 0.0f);
 		program->setModelMatrix(modelMatrix);

@@ -103,7 +103,7 @@ void Entity::performCollision(Entity *entity)
 
 	//}
 	bool stomps = (bot < targetTop );
-	if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY) && stomps && collides && (actionState == ACTION_JUMPING || !collidedBottom))
+	if ((entityType == ENTITY_PLAYER && entity->entityType == ENTITY_ENEMY) && stomps && collides && (actionState == ACTION_JUMPING || velocity_y<-0.5f))
 	{
 		entity->isAlive = false;
 		velocity_y += 5.5f;
