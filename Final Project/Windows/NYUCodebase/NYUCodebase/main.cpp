@@ -436,15 +436,16 @@ void penetrationUpdate(Entity* entity)
 	float right = entity->x + entity->getWidth() * 0.5f;
 	float penetration = 0.0f;
 //Penetration Bot
-	worldToTileCoordinates(entity->x - entity->getWidth() / 2, entity->y - entity->getHeight() / 2, &currX1, &currY1);
-	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y - entity->getHeight() / 2, &currX2, &currY2);
+	worldToTileCoordinates(entity->x - (0.95f* entity->getWidth() / 2), entity->y - entity->getHeight() / 2, &currX1, &currY1);
+	worldToTileCoordinates(entity->x + (0.95f* entity->getWidth() / 2), entity->y - entity->getHeight() / 2, &currX2, &currY2);
 	bool penetration1 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY1][currX1]) != std::end(staticTilesIndex);
 	bool penetration2 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY2][currX2]) != std::end(staticTilesIndex);
 	if (penetration1 || penetration2)
 	{
 		penetration = fabs((-TILE_SIZE*(currY1)) - bot);
-		entity->y += penetration + 0.000009f;
+		entity->y += penetration + 0.000039f;
 		entity->collidedBottom = true;
+		entity->velocity_y = 0.0f;
 	}
 
 
@@ -456,8 +457,8 @@ void penetrationUpdate(Entity* entity)
 		entity->collidedBottom = true;
 	}
 	//Penetrate Top
-	worldToTileCoordinates(entity->x - entity->getWidth() / 2, entity->y + entity->getHeight() / 2, &currX1, &currY1);
-	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y + entity->getHeight() / 2, &currX2, &currY2);
+	worldToTileCoordinates(entity->x - (0.95f*entity->getWidth() / 2), entity->y + entity->getHeight() / 2, &currX1, &currY1);
+	worldToTileCoordinates(entity->x + (0.95f*entity->getWidth() / 2), entity->y + entity->getHeight() / 2, &currX2, &currY2);
 	penetration1 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY1][currX1]) != std::end(staticTilesIndex);
 	penetration2 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY2][currX2]) != std::end(staticTilesIndex);
 	if (penetration1 || penetration2)
@@ -495,14 +496,14 @@ void penetrationUpdate(Entity* entity)
 	}
 
 	//Penetrate Right
-	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y, &currX1, &currY1);
-	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y, &currX2, &currY2);
+	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y + (0.95f*entity->getHeight()/2.0f), &currX1, &currY1);
+	worldToTileCoordinates(entity->x + entity->getWidth() / 2, entity->y - (0.95f*entity->getHeight()/2.0f), &currX2, &currY2);
 	penetration1 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY1][currX1]) != std::end(staticTilesIndex);
 	penetration2 = std::find(std::begin(staticTilesIndex), std::end(staticTilesIndex), levelData[currY2][currX2]) != std::end(staticTilesIndex);
 	if (penetration1 || penetration2)
 	{
 		penetration = fabs((TILE_SIZE * currX1) - right);
-		entity->x -= (penetration + 3.00039f);
+		entity->x -= penetration + 0.000009f;
 		entity->collidedRight = true;
 		entity->velocity_x = 0.0f;
 	}
