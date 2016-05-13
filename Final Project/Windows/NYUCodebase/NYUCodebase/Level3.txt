@@ -174,5 +174,5 @@ location=6837,2107,1,1
 [ObjectsLayer]
 # Finish
 type=Portal
-location=122,28,1,2
+location=8608,2020,1,2
 

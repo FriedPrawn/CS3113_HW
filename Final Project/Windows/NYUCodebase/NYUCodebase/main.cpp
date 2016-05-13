@@ -43,7 +43,7 @@ Entity* tiles[10];
 SheetSprite background;
 GLuint fontSheet = 0;
 ShaderProgram* program;
-enum GameState { STATE_TITLE_SCREEN, STATE_GAME, STATE_LEVEL2, STATE_LEVEL3, STATE_GAME_OVER};
+enum GameState { STATE_TITLE_SCREEN, STATE_GAME, STATE_LEVEL2, STATE_LEVEL3, STATE_GAME_OVER, STATE_GAME_WIN};
 GameState currentState = STATE_TITLE_SCREEN;
 GameState latestLevel = STATE_GAME;
 bool gameOver = false;
@@ -63,6 +63,8 @@ float placeXD = 0.0f;
 Mix_Music *music;
 Mix_Chunk *jump;
 bool firstTime = true;
+float portalx;
+float portaly;
 
 //animation
 const int runAnimation[] = { 0, 1, 2, 7, 8, 9, 3, 4, 11, 5 };
@@ -71,7 +73,7 @@ float animationElapsed = 0.0f;
 float framesPerSecond = 60.0f;
 int currentIndex = 0;
 vector<int> staticTilesIndex{9,140,66,89,50,66, 26, 15, 123, 91, 27, 134, 22};
-vector<int> lavaTilesIndex{ 127, 7};
+vector<int> lavaTilesIndex{ 127, 7, 94};
 vector<Entity*> enemiesOne;
 vector<Entity*> enemiesTwo;
 vector<Entity*> enemiesThree;
@@ -241,6 +243,11 @@ bool readEntityData(std::ifstream &stream) {
 				Player.x = placeX;
 				Player.y = placeY;
 			}
+			if (type == "Portal")
+			{
+				portalx = placeX;
+				portaly = placeY;
+			}
 	
 		}
 	}
@@ -322,6 +329,8 @@ void renderLevel()
 {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	std::vector<float> vertexData;
 	std::vector<float> texCoordData;
 	int SPRITE_COUNT_X = 11;
@@ -331,7 +340,7 @@ void renderLevel()
 		for (int x = 0; x < mapWidth; x++) 
 		{
 			
-			float spacingX = 2.0f / 792.0f;
+			float spacingX = 2.5f / 792.0f;
 			float spacingY = 2.0f / 936.0f;
 
 			float u = (float)(((int)levelData[y][x]) % SPRITE_COUNT_X) / (float)SPRITE_COUNT_X;
@@ -686,6 +695,12 @@ void detectEntity(Entity* entity, Entity* target)
 	
 }
 void update(float elapsed){
+	if (currentState == STATE_GAME_WIN)
+	{
+		if (keys[SDL_SCANCODE_RETURN]){
+			currentState = STATE_TITLE_SCREEN;
+		}
+	}
 	if (currentState == STATE_TITLE_SCREEN)
 	{
 		if (keys[SDL_SCANCODE_RETURN]){
@@ -859,11 +874,17 @@ void update(float elapsed){
 
 			}
 		}
-		
+		if (Player.isAlive && (Player.x >= portalx - TILE_SIZE) && Player.x <= portalx + TILE_SIZE){
+			currentState = STATE_LEVEL2;
+			latestLevel = STATE_LEVEL2;
+			resetLevelDefaults2();
+			loadLevel2();
+		}
 		if (!Player.isAlive && (currentState == STATE_GAME || currentState == STATE_LEVEL2)){
 			currentState = STATE_GAME_OVER;
 		}
 	}
+//Level 2 ==================================================================================================================
 	else if (currentState == STATE_LEVEL2)
 	{
 		if (keys[SDL_SCANCODE_F10])
@@ -906,7 +927,12 @@ void update(float elapsed){
 
 			}
 		
-
+			if (Player.isAlive && (Player.x >= portalx - TILE_SIZE) && Player.x <= portalx + TILE_SIZE){
+				currentState = STATE_LEVEL3;
+				latestLevel = STATE_LEVEL3;
+				resetLevelDefaults3();
+				loadLevel3();
+			}
 		if (!Player.isAlive && (currentState == STATE_GAME || currentState == STATE_LEVEL2)){
 			currentState = STATE_GAME_OVER;
 		}
@@ -954,7 +980,9 @@ void update(float elapsed){
 				detectEntity(enemiesThree[i], &Player);
 			}
 		
-
+			if (Player.isAlive && (Player.x >= portalx - TILE_SIZE) && Player.x <= portalx + TILE_SIZE){
+				currentState = STATE_GAME_WIN;
+			}
 		if (!Player.isAlive && (currentState == STATE_GAME || currentState == STATE_LEVEL2 || currentState == STATE_LEVEL3)){
 			currentState = STATE_GAME_OVER;
 		}
@@ -995,6 +1023,7 @@ void render(){
 		viewMatrix.identity();
 		program->setModelMatrix(modelMatrix);
 		DrawText(program, fontSheet, "Platformer Demo", 0.3f, -0.1f);
+
 		modelMatrix.identity();
 		modelMatrix.Translate(-1.37f, 0.0f, 0.0f);
 		program->setModelMatrix(modelMatrix);
@@ -1010,14 +1039,14 @@ void render(){
 		modelMatrix.identity();
 		modelMatrix.Translate(-1.3f, -0.5f, 0.0f);
 		program->setModelMatrix(modelMatrix);
-		DrawText(program, fontSheet, "Press R here to restart a game", 0.2f, -0.1f);
+		DrawText(program, fontSheet, "Press R here to restart a game/ F10 for menu", 0.2f, -0.1f);
 
 		modelMatrix.identity();
-		modelMatrix.Translate(-0.50f, -0.5f, 0.0f);
+		modelMatrix.Translate(-0.50f, -1.0f, 0.0f);
 		program->setModelMatrix(modelMatrix);
 		DrawText(program, fontSheet, "Space =  jump ", 0.17f, -0.07f);
 		modelMatrix.identity();
-		modelMatrix.Translate(-0.57f, -0.7f, 0.0f);
+		modelMatrix.Translate(-0.57f, -1.5f, 0.0f);
 		program->setModelMatrix(modelMatrix);
 		DrawText(program, fontSheet, "Left/Right = move ", 0.17f, -0.07f);
 	}
@@ -1039,7 +1068,11 @@ void render(){
 		glDisableVertexAttribArray(program->positionAttribute);
 		*/
 		
-
+		viewMatrix.identity();
+		
+			//viewMatrix.Scale(0.9f, 0.9f, 1.0f);
+		viewMatrix.Translate(-1 * Player.x, -1 * Player.y, 0.0f);
+		program->setViewMatrix(viewMatrix);
 		renderLevel();
 		if (Player.acceleration_x == 0.0f){
 			/*Player.sprite.u = 67.0f / 508.0f;
@@ -1078,9 +1111,7 @@ void render(){
 			enemiesOne[i]->sprite.Draw(program, modelMatrix, enemiesOne[i]->x, enemiesOne[i]->y);
 		}
 		std::cout << Player.x << endl;
-		viewMatrix.identity();
-		viewMatrix.Translate(-1 * Player.x, -1 * Player.y, 0.0f);
-		program->setViewMatrix(viewMatrix);
+		
 	}
 	if (currentState == STATE_LEVEL2){
 
@@ -1148,6 +1179,13 @@ void render(){
 		modelMatrix.Translate(-0.57f, -0.7f, 0.0f);
 		program->setModelMatrix(modelMatrix);
 		DrawText(program, fontSheet, "Left/Right = move ", 0.17f, -0.07f);
+	}
+	if (currentState == STATE_GAME_WIN){
+		modelMatrix.identity();
+		modelMatrix.Translate(-1.2f, 1.5f, 0.0f);
+		viewMatrix.identity();
+		program->setModelMatrix(modelMatrix);
+		DrawText(program, fontSheet, "You win", 0.3f, -0.1f);
 	}
 	SDL_GL_SwapWindow(displayWindow);
 	
